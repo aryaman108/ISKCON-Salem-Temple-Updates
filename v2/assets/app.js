@@ -9,6 +9,18 @@
   const $  = (q, el = document) => el.querySelector(q);
   const $$ = (q, el = document) => Array.from(el.querySelectorAll(q));
 
+  const storage = {
+    get(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, value); } catch {}
+    },
+    remove(key) {
+      try { localStorage.removeItem(key); } catch {}
+    }
+  };
+
   // ---------- Toast ----------
   function toast(msg) {
     const t = $('#toast');
@@ -34,13 +46,13 @@
   // ---------- Theme toggle ----------
   (function () {
     const root = document.documentElement;
-    if (localStorage.getItem('iskcon-theme') === 'dark') root.setAttribute('data-theme', 'dark');
+    if (storage.get('iskcon-theme') === 'dark') root.setAttribute('data-theme', 'dark');
     const btn = $('#theme-toggle');
     if (!btn) return;
     btn.addEventListener('click', () => {
       const dark = root.getAttribute('data-theme') === 'dark';
       root.setAttribute('data-theme', dark ? 'light' : 'dark');
-      localStorage.setItem('iskcon-theme', dark ? 'light' : 'dark');
+      storage.set('iskcon-theme', dark ? 'light' : 'dark');
     });
   })();
 
@@ -189,7 +201,12 @@
     const beadBtn = $('#beadBtn');
     if (!beadBtn) return;
     const KEY = 'iskcon-japa';
-    const state = JSON.parse(localStorage.getItem(KEY) || '{}');
+    let state = {};
+    try {
+      state = JSON.parse(storage.get(KEY) || '{}');
+    } catch {
+      state = {};
+    }
     state.count = state.count || 0;
     state.totalRounds = state.totalRounds || 0;
     state.today = state.today || { date: '', rounds: 0 };
@@ -211,7 +228,7 @@
       if (roundsTotal) roundsTotal.textContent = state.totalRounds;
       if (streakDays)  streakDays.textContent  = state.streak;
     }
-    function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+    function save() { storage.set(KEY, JSON.stringify(state)); }
     function bump() {
       state.count++;
       const t = new Date().toDateString();
@@ -243,7 +260,7 @@
     const clear = $('#chantClear');
     if (clear) clear.addEventListener('click', () => {
       if (!confirm('Clear all japa counts?')) return;
-      localStorage.removeItem(KEY);
+      storage.remove(KEY);
       state.count = 0; state.totalRounds = 0; state.today.rounds = 0; state.streak = 0;
       render(); toast('All counts cleared');
     });
@@ -342,6 +359,56 @@
     show(0);
   })();
 
+  // ---------- Blessings quote slider ----------
+  (function () {
+    const root = $('#blessingQuoteSlider');
+    if (!root) return;
+
+    const slides = $$('.quote-slide', root);
+    const dotsHost = $('#quoteDots', root);
+    const prev = $('#quotePrev', root);
+    const next = $('#quoteNext', root);
+    if (!slides.length || !dotsHost) return;
+
+    let idx = 0;
+    let timer;
+
+    slides.forEach((_, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', 'Go to quote ' + (i + 1));
+      b.addEventListener('click', () => show(i));
+      dotsHost.appendChild(b);
+    });
+
+    function show(i) {
+      idx = (i + slides.length) % slides.length;
+      slides.forEach((s, j) => s.classList.toggle('active', j === idx));
+      $$('button', dotsHost).forEach((b, j) => b.classList.toggle('active', j === idx));
+    }
+
+    function startAuto() {
+      stopAuto();
+      timer = setInterval(() => show(idx + 1), 7000);
+    }
+
+    function stopAuto() {
+      clearInterval(timer);
+    }
+
+    if (prev) prev.addEventListener('click', () => { show(idx - 1); startAuto(); });
+    if (next) next.addEventListener('click', () => { show(idx + 1); startAuto(); });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopAuto();
+      else startAuto();
+    });
+
+    show(0);
+    startAuto();
+  })();
+
   // ---------- Lightbox ----------
   (function () {
     const box = $('#lightbox');
@@ -431,7 +498,7 @@
         'இன்று வைக்கப்படும் ஒரு கல் நம்மை விட நூற்றாண்டுகள் வாழும். தெய்வம் உங்கள் பெயரை அறியும்.',
       'Visit Main Site': 'முதன்மை தளம்'
     };
-    let lang = localStorage.getItem('iskcon-lang') || 'en';
+    let lang = storage.get('iskcon-lang') || 'en';
 
     function apply() {
       const ta = lang === 'ta';
@@ -444,7 +511,7 @@
     }
     function toggle() {
       lang = lang === 'en' ? 'ta' : 'en';
-      localStorage.setItem('iskcon-lang', lang);
+      storage.set('iskcon-lang', lang);
       apply();
       toast(lang === 'ta' ? 'மொழி: தமிழ்' : 'Language: English');
     }

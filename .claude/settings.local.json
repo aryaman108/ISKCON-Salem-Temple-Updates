@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /d/Salem-website-v2/assets && echo \"done\")"
+    ],
+    "additionalDirectories": [
+      "D:\\Salem-website-v2"
+    ]
+  }
+}
